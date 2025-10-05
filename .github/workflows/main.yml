@@ -1,0 +1,53 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest  # Windows runner
+
+    steps:
+    - uses: actions/checkout@v4  # Klónozza a repo-t
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'  # Electron 37-hez kompatibilis
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build Electron app
+      run: npm run build  # Futtatja a package.json "build" script-et
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-exe
+        path: dist/*.exe  # Feltölti a .exe-t artifact-ként
+
+    - name: Create Release (opcionális)
+      if: github.ref == 'refs/heads/main'  # Csak main branch-en
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}  # Pl. v1, v2...
+        release_name: Release v${{ github.run_number }}
+        draft: false
+        prerelease: false
+
+    - name: Upload EXE to Release
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: dist/*.exe
+        asset_name: Koepeleo-Windows-1.1.0.exe
+        asset_content_type: application/octet-stream
